@@ -1,0 +1,126 @@
+/* General styles for the game */
+#game-container {
+  width: 80%;
+  margin: 0 auto;
+  text-align: center;
+  font-family: Arial, sans-serif;
+  padding-top: 20px;
+}
+
+h1 {
+  margin-bottom: 20px;
+}
+
+.block-categories {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.category {
+  padding: 10px 20px;
+  font-size: 16px;
+  border: none;
+  background-color: #f0f0f0;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.category.active {
+  background-color: #d9d9d9;
+}
+
+.category:hover {
+  background-color: #e0e0e0;
+}
+
+.game-controls {
+  margin-bottom: 20px;
+}
+
+.game-controls button {
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+}
+
+.game-controls button:hover {
+  background-color: #45a049;
+}
+
+.game-grid {
+  display: grid;
+  grid-template-columns: repeat(15, 30px);
+  grid-template-rows: repeat(10, 30px);
+  gap: 2px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.row {
+  display: flex;
+}
+
+.cell {
+  width: 30px;
+  height: 30px;
+  border: 1px solid #ccc;
+  display: inline-block;
+  cursor: pointer;
+  position: relative;
+}
+
+.cell:focus {
+  outline: 2px solid #4CAF50;
+}
+
+.platform {
+  background-color: #808080;
+}
+
+.coin {
+  background-color: #FFD700;
+}
+
+.player {
+  background-color: #FFA500;
+  border-radius: 50%;
+}
+
+.empty {
+  background-color: white;
+}
+
+#status {
+  margin-top: 20px;
+  font-size: 18px;
+  color: #555;
+}
+
+/* Styling for accessibility */
+[role="grid"] {
+  display: inline-block;
+  margin-top: 20px;
+}
+
+[role="gridcell"]:focus {
+  outline: 2px solid #4CAF50;
+}
+
+[aria-live="polite"] {
+  position: absolute;
+  top: -1000px;
+  left: -1000px;
+}
+
+@media (max-width: 600px) {
+  .game-grid {
+      grid-template-columns: repeat(7, 30px);
+      grid-template-rows: repeat(10, 30px);
+  }
+}
