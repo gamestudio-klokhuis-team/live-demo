@@ -34,6 +34,7 @@ const Game = () => {
     const [mode, setMode] = useState('edit');
     const [selectedBlock, setSelectedBlock] = useState(null);
     const [playerPos, setPlayerPos] = useState({ x: 0, y: 0 });
+    const [isDrawing, setIsDrawing] = useState(false);
     const [score, setScore] = useState(0);
     const [lives, setLives] = useState(3);
     const [status, setStatus] = useState('');
@@ -44,10 +45,22 @@ const Game = () => {
             Array(GRID_WIDTH).fill().map(() => ({
                 type: 'empty',
                 className: '',
-                properties: {}
+                properties: {},
+                items: []  // Array voor items die op de cel kunnen staan
             }))
         );
         setGrid(newGrid);
+    }, []);
+
+    useEffect(() => {
+        const handleGlobalMouseUp = () => {
+            setIsDrawing(false);
+        };
+
+        window.addEventListener('mouseup', handleGlobalMouseUp);
+        return () => {
+            window.removeEventListener('mouseup', handleGlobalMouseUp);
+        };
     }, []);
 
     const announce = (message) => {
@@ -70,6 +83,23 @@ const Game = () => {
 
         announce(`${selectedBlock.name} geplaatst op rij ${y + 1}, kolom ${x + 1}`);
     }, [selectedBlock]);
+
+    const startDrawing = (x, y) => {
+        if (mode === 'edit' && selectedBlock) {
+            setIsDrawing(true);
+            placeBlock(x, y);
+        }
+    };
+
+    const stopDrawing = () => {
+        setIsDrawing(false);
+    };
+
+    const handleCellHover = (x, y) => {
+        if (isDrawing && mode === 'edit' && selectedBlock) {
+            placeBlock(x, y);
+        }
+    };
 
     const movePlayer = useCallback((dx, dy) => {
         if (mode !== 'play') return;
@@ -147,8 +177,10 @@ const Game = () => {
                 {row.map((cell, x) => (
                     <div
                         key={`${x}-${y}`}
-                        className={`cell ${cell.className}`}  // Verwijder player class hier
-                        onClick={() => mode === 'edit' && placeBlock(x, y)}
+                        className={`cell ${cell.className}`}
+                        onMouseDown={() => startDrawing(x, y)}
+                        onMouseEnter={() => handleCellHover(x, y)}
+                        onMouseUp={stopDrawing}
                         role="gridcell"
                         aria-row={y}
                         aria-col={x}
