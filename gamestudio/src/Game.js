@@ -40,6 +40,7 @@ const Game = () => {
     const [status, setStatus] = useState('');
     const [history, setHistory] = useState([]);
     const [currentStep, setCurrentStep] = useState(-1);
+    const placeSound = new Audio(process.env.PUBLIC_URL + '/sounds/place.mp3');
 
     // Initialize grid
     useEffect(() => {
@@ -75,6 +76,11 @@ const Game = () => {
         setStatus(message);
     };
 
+    const playSound = () => {
+        placeSound.currentTime = 0; // Reset audio naar begin
+        placeSound.play().catch(e => console.log('Audio play failed:', e));
+    };
+
     const saveToHistory = useCallback((newGrid) => {
         setHistory(prev => {
             // Verwijder alle stappen na de huidige stap als we een nieuwe actie doen
@@ -95,6 +101,7 @@ const Game = () => {
                 properties: { ...selectedBlock }
             };
             saveToHistory(newGrid);
+            playSound(); // Speel geluid af bij plaatsing
             return newGrid;
         });
     
