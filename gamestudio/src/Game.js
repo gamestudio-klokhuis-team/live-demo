@@ -147,13 +147,17 @@ const Game = () => {
                 {row.map((cell, x) => (
                     <div
                         key={`${x}-${y}`}
-                        className={`cell ${cell.className} ${playerPos.x === x && playerPos.y === y ? 'player' : ''}`}
+                        className={`cell ${cell.className}`}  // Verwijder player class hier
                         onClick={() => mode === 'edit' && placeBlock(x, y)}
                         role="gridcell"
                         aria-row={y}
                         aria-col={x}
                         tabIndex={0}
-                    />
+                    >
+                        {playerPos.x === x && playerPos.y === y && (
+                            <div className="player" />
+                        )}
+                    </div>
                 ))}
             </div>
         ));
