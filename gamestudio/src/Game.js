@@ -38,6 +38,8 @@ const Game = () => {
     const [score, setScore] = useState(0);
     const [lives, setLives] = useState(3);
     const [status, setStatus] = useState('');
+    const [history, setHistory] = useState([]);
+    const [currentStep, setCurrentStep] = useState(-1);
 
     // Initialize grid
     useEffect(() => {
@@ -63,26 +65,41 @@ const Game = () => {
         };
     }, []);
 
+    useEffect(() => {
+        if (grid.length > 0) {
+            saveToHistory(grid);
+        }
+    }, []);
+
     const announce = (message) => {
         setStatus(message);
     };
 
+    const saveToHistory = useCallback((newGrid) => {
+        setHistory(prev => {
+            // Verwijder alle stappen na de huidige stap als we een nieuwe actie doen
+            const newHistory = prev.slice(0, currentStep + 1);
+            return [...newHistory, newGrid];
+        });
+        setCurrentStep(prev => prev + 1);
+    }, [currentStep]);
+
     const placeBlock = useCallback((x, y) => {
         if (!selectedBlock) return;
-
+    
         setGrid(prevGrid => {
-            const newGrid = [...prevGrid];
-            newGrid[y] = [...newGrid[y]];
+            const newGrid = JSON.parse(JSON.stringify(prevGrid));
             newGrid[y][x] = {
                 type: selectedBlock.id,
                 className: selectedBlock.className,
                 properties: { ...selectedBlock }
             };
+            saveToHistory(newGrid);
             return newGrid;
         });
-
+    
         announce(`${selectedBlock.name} geplaatst op rij ${y + 1}, kolom ${x + 1}`);
-    }, [selectedBlock]);
+    }, [selectedBlock, saveToHistory]);
 
     const startDrawing = (x, y) => {
         if (mode === 'edit' && selectedBlock) {
@@ -99,6 +116,33 @@ const Game = () => {
         if (isDrawing && mode === 'edit' && selectedBlock) {
             placeBlock(x, y);
         }
+    };
+
+    const undo = () => {
+        if (currentStep > 0) {
+            setCurrentStep(prev => prev - 1);
+            setGrid(JSON.parse(JSON.stringify(history[currentStep - 1])));
+        }
+    };
+
+    const redo = () => {
+        if (currentStep < history.length - 1) {
+            setCurrentStep(prev => prev + 1);
+            setGrid(JSON.parse(JSON.stringify(history[currentStep + 1])));
+        }
+    };
+
+    const resetGrid = () => {
+        const newGrid = Array(GRID_HEIGHT).fill().map(() =>
+            Array(GRID_WIDTH).fill().map(() => ({
+                type: 'empty',
+                className: '',
+                properties: {},
+                items: []
+            }))
+        );
+        setGrid(newGrid);
+        saveToHistory(newGrid);
     };
 
     const movePlayer = useCallback((dx, dy) => {
@@ -195,21 +239,35 @@ const Game = () => {
         ));
     };
 
-    return (
-        <div className="game-container">
-            <div className="game-header">
-                <div className="stats">
-                    <span role="status">Levens: {lives}</span>
-                    <span role="status">Score: {score}</span>
-                </div>
-                <button 
-                    onClick={() => setMode(m => m === 'edit' ? 'play' : 'edit')}
-                    className="mode-toggle"
-                >
-                    {mode === 'edit' ? 'Speel' : 'Bewerk'}
-                </button>
-            </div>
-
+    // In de return statement van de Game component, update de JSX structuur:
+return (
+    <div className="game-container">
+        <div className="menu-panel">
+            <div className="tool-buttons">
+            <button 
+                onClick={undo} 
+                disabled={currentStep <= 0}
+                className="tool-btn"
+                aria-label="Ongedaan maken"
+            >
+                ↩️
+            </button>
+            <button 
+                onClick={redo}
+                disabled={currentStep >= history.length - 1}
+                className="tool-btn"
+                aria-label="Opnieuw"
+            >
+                ↪️
+            </button>
+            <button 
+                onClick={resetGrid}
+                className="tool-btn"
+                aria-label="Reset veld"
+            >
+                🗑️
+            </button>
+        </div>
             <div className="block-categories">
                 {Object.entries(BLOCK_CATEGORIES).map(([key, category]) => (
                     <div key={key} className="category">
@@ -228,6 +286,21 @@ const Game = () => {
                     </div>
                 ))}
             </div>
+        </div>
+
+        <div className="game-area">
+            <div className="game-header">
+                <div className="stats">
+                    <span role="status">Levens: {lives}</span>
+                    <span role="status">Score: {score}</span>
+                </div>
+                <button 
+                    onClick={() => setMode(m => m === 'edit' ? 'play' : 'edit')}
+                    className="mode-toggle"
+                >
+                    {mode === 'edit' ? 'Speel' : 'Bewerk'}
+                </button>
+            </div>
 
             <div className="game-grid" role="grid" aria-label="Speelveld">
                 {renderGrid()}
@@ -237,7 +310,8 @@ const Game = () => {
                 {status}
             </div>
         </div>
-    );
+    </div>
+);
 };
 
 export default Game;
