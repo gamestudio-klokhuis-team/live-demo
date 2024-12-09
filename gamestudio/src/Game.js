@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Save, Undo, Redo } from 'lucide-react';
 import './Game.css';
 
 const GRID_WIDTH = 15;
@@ -41,15 +42,18 @@ const Game = () => {
     const [history, setHistory] = useState([]);
     const [currentStep, setCurrentStep] = useState(-1);
     const placeSound = new Audio(process.env.PUBLIC_URL + '/sounds/place.mp3');
+    const [activeCategoryIndex, setActiveCategoryIndex] = useState(0);
+    const categoryKeys = Object.keys(BLOCK_CATEGORIES);
 
-    // Initialize grid
+    const activeCategory = BLOCK_CATEGORIES[categoryKeys[activeCategoryIndex]];
+
     useEffect(() => {
         const newGrid = Array(GRID_HEIGHT).fill().map(() =>
             Array(GRID_WIDTH).fill().map(() => ({
                 type: 'empty',
                 className: '',
                 properties: {},
-                items: []  // Array voor items die op de cel kunnen staan
+                items: []
             }))
         );
         setGrid(newGrid);
@@ -154,61 +158,51 @@ const Game = () => {
 
     const movePlayer = useCallback((dx, dy) => {
         if (mode !== 'play') return;
-
+    
         setPlayerPos(prev => {
             const newX = prev.x + dx;
             const newY = prev.y + dy;
-
+    
+            console.log('Moving to:', newX, newY);
+    
             // Check boundaries
             if (newX < 0 || newX >= GRID_WIDTH || newY < 0 || newY >= GRID_HEIGHT) {
                 return prev;
             }
-
+    
             // Check collision
-            const targetCell = grid[newY][newX];
-            if (targetCell.properties.solid) {
+            if (!grid[newY] || !grid[newY][newX]) {
                 return prev;
             }
-
-            // Handle collectibles
-            if (targetCell.properties.collectible) {
-                setScore(s => s + (targetCell.properties.points || 0));
-                setGrid(prevGrid => {
-                    const newGrid = [...prevGrid];
-                    newGrid[newY] = [...newGrid[newY]];
-                    newGrid[newY][newX] = {
-                        type: 'empty',
-                        className: '',
-                        properties: {}
-                    };
-                    return newGrid;
-                });
+    
+            const targetCell = grid[newY][newX];
+            if (targetCell?.properties?.solid) {
+                return prev;
             }
-
-            // Handle hazards
-            if (targetCell.properties.hazard) {
-                setLives(l => l - 1);
-                return { x: 0, y: 0 }; // Reset position
-            }
-
-            announce(`Speler op positie ${newY + 1}, ${newX + 1}`);
+    
             return { x: newX, y: newY };
         });
     }, [mode, grid]);
 
     const handleKeyDown = useCallback((e) => {
         if (mode === 'play') {
+            e.preventDefault();
+            
             switch (e.key) {
                 case 'ArrowUp':
+                case 'w':
                     movePlayer(0, -1);
                     break;
                 case 'ArrowDown':
+                case 's':
                     movePlayer(0, 1);
                     break;
                 case 'ArrowLeft':
+                case 'a':
                     movePlayer(-1, 0);
                     break;
                 case 'ArrowRight':
+                case 'd':
                     movePlayer(1, 0);
                     break;
                 default:
@@ -219,13 +213,16 @@ const Game = () => {
 
     useEffect(() => {
         window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
     }, [handleKeyDown]);
 
     const renderGrid = () => {
-        return grid.map((row, y) => (
-            <div key={y} className="row" role="row">
-                {row.map((cell, x) => (
+        return Array(GRID_HEIGHT).fill().map((_, y) => 
+            Array(GRID_WIDTH).fill().map((_, x) => {
+                const cell = grid[y]?.[x] || { type: 'empty', className: '' };
+                return (
                     <div
                         key={`${x}-${y}`}
                         className={`cell ${cell.className}`}
@@ -235,90 +232,84 @@ const Game = () => {
                         role="gridcell"
                         aria-row={y}
                         aria-col={x}
-                        tabIndex={0}
                     >
-                        {playerPos.x === x && playerPos.y === y && (
+                        {mode === 'play' && playerPos.x === x && playerPos.y === y && (
                             <div className="player" />
                         )}
                     </div>
-                ))}
-            </div>
-        ));
+                );
+            })
+        ).flat();
     };
 
-    // In de return statement van de Game component, update de JSX structuur:
-return (
-    <div className="game-container">
-        <div className="menu-panel">
-            <div className="tool-buttons">
-            <button 
-                onClick={undo} 
-                disabled={currentStep <= 0}
-                className="tool-btn"
-                aria-label="Ongedaan maken"
-            >
-                ↩️
-            </button>
-            <button 
-                onClick={redo}
-                disabled={currentStep >= history.length - 1}
-                className="tool-btn"
-                aria-label="Opnieuw"
-            >
-                ↪️
-            </button>
-            <button 
-                onClick={resetGrid}
-                className="tool-btn"
-                aria-label="Reset veld"
-            >
-                🗑️
-            </button>
-        </div>
-            <div className="block-categories">
-                {Object.entries(BLOCK_CATEGORIES).map(([key, category]) => (
-                    <div key={key} className="category">
-                        <h3>{category.name}</h3>
-                        <div className="blocks">
-                            {category.blocks.map(block => (
-                                <div
-                                    key={block.id}
-                                    className={`block-option ${block.className} ${selectedBlock?.id === block.id ? 'selected' : ''}`}
-                                    onClick={() => setSelectedBlock(block)}
-                                    role="button"
-                                    aria-label={block.name}
-                                />
-                            ))}
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
+    const nextCategory = () => {
+        setActiveCategoryIndex((prevIndex) => (prevIndex + 1) % categoryKeys.length);
+    };
 
-        <div className="game-area">
-            <div className="game-header">
-                <div className="stats">
-                    <span role="status">Levens: {lives}</span>
-                    <span role="status">Score: {score}</span>
+    const prevCategory = () => {
+        setActiveCategoryIndex((prevIndex) => (prevIndex - 1 + categoryKeys.length) % categoryKeys.length);
+    };
+
+    const startGame = () => {
+        // Toggle tussen edit en play mode
+        setMode(prevMode => prevMode === 'play' ? 'edit' : 'play');
+        // Alleen reset player position als we naar play mode gaan
+        if (mode === 'edit') {
+            setPlayerPos({ x: 0, y: 0 });
+        }
+    };
+
+    return (
+        <div className="game-container">
+            <div className="menu-panel">
+                <h1>Game Studio</h1>
+                <h2>Bouwstenen</h2>
+                <p>Blokken om je level mee te bouwen</p>
+                
+                <div className="category-switch">
+                    <button className="arrow-button" onClick={prevCategory}>&lt;</button>
+                    <div className="category-name">{activeCategory.name}</div>
+                    <button className="arrow-button" onClick={nextCategory}>&gt;</button>
                 </div>
-                <button 
-                    onClick={() => setMode(m => m === 'edit' ? 'play' : 'edit')}
-                    className="mode-toggle"
-                >
-                    {mode === 'edit' ? 'Speel' : 'Bewerk'}
+                
+                <div className="blocks">
+                    {activeCategory.blocks.map(block => (
+                        <div
+                            key={block.id}
+                            className={`block-option ${block.className} ${selectedBlock?.id === block.id ? 'selected' : ''}`}
+                            onClick={() => setSelectedBlock(block)}
+                        />
+                    ))}
+                </div>
+                
+                <button className="test-game-button" onClick={startGame}>
+                    {mode === 'play' ? 'Stop testen' : 'Test de game'}
                 </button>
             </div>
 
-            <div className="game-grid" role="grid" aria-label="Speelveld">
-                {renderGrid()}
-            </div>
+            <div className={`game-area ${mode === 'play' ? 'test-mode' : ''}`}>
+                {mode === 'play' && (
+                    <div className="game-status test-mode">
+                        Test Mode
+                    </div>
+                )}
+                <div className="game-grid">
+                    {renderGrid()}
+                </div>
 
-            <div className="status" role="status" aria-live="polite">
-                {status}
+                <div className="game-controls">
+                    <button className="control-button" onClick={undo}>
+                        Stap terug
+                    </button>
+                    <button className="control-button" onClick={redo}>
+                        Stap vooruit
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
-);
+    );
 };
 
 export default Game;
+
+
